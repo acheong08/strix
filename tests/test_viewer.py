@@ -703,7 +703,7 @@ def test_report_download_returns_pdf_attachment(
         assert status == 200
         assert headers["Content-Type"] == "application/pdf"
         assert headers["Cache-Control"] == "no-store"
-        assert 'attachment; filename="strix-report-report.pdf"' == headers["Content-Disposition"]
+        assert headers["Content-Disposition"] == 'attachment; filename="strix-report-report.pdf"'
         assert body.startswith(b"%PDF-")
     finally:
         httpd.shutdown()
