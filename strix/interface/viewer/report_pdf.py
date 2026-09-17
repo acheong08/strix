@@ -1,14 +1,11 @@
-"""Build and encrypt a branded PDF report for a run.
+"""Build PDF reports for a run entirely on the local machine.
 
-The layout mirrors the Strix cloud pentest report (cover page, executive
-severity grid, per-finding detail with colored severity badges) but is rendered
-entirely locally with reportlab, so it ships without a browser or heavy system
-deps and keeps the report on the user's machine.
+The report is rendered with reportlab, ships without a browser or heavy system
+dependencies, and never needs a hosted service to generate or download it.
 
-The PDF carries FULL finding detail, including proof-of-concept scripts, so it
-is encrypted end to end with AES-256. The password is generated locally with a
-CSPRNG, shown only to the local browser, and never leaves the machine except in
-the user's own hands. Strix cannot read the delivered report.
+The module also supports AES-256 encryption for flows that want a passworded
+copy. The password is generated locally with a CSPRNG and never leaves the
+machine except in the user's own hands.
 """
 
 from __future__ import annotations
@@ -53,7 +50,7 @@ if TYPE_CHECKING:
     from markdown_it.token import Token
 
 
-# Palette lifted from the cloud report theme (styles/base.ts, docx/theme.ts).
+# Shared local report palette.
 _INK = colors.HexColor("#000000")
 _TEXT = colors.HexColor("#1a1a1a")
 _MUTED = colors.HexColor("#666666")
@@ -79,6 +76,7 @@ _INLINE_MD = MarkdownIt("commonmark", {"html": False, "linkify": False}).disable
     ["autolink", "image", "link"]
 )
 _UNSAFE_TEXT_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ud800-\udfff\ufffe\uffff]")
+_FILENAME_UNSAFE_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 def _normalize_text(value: Any) -> str:
@@ -289,7 +287,7 @@ def _normalize_severity(value: Any) -> str:
 
 
 def _severity_badge(styles: dict[str, ParagraphStyle], severity: Any) -> Table:
-    """A colored pill matching .severity-badge in the cloud report."""
+    """A colored severity pill."""
     severity = _normalize_severity(severity)
     color = _SEVERITY_COLORS.get(severity, _MUTED)
     cell = Paragraph(_esc(severity.upper()), styles["badge"])
@@ -670,6 +668,12 @@ def generate_report_pdf(run_dir: Path) -> bytes:
     return buffer.getvalue()
 
 
+def report_filename(run_name: Any) -> str:
+    """Return a filesystem- and header-safe report filename for ``run_name``."""
+    stem = _FILENAME_UNSAFE_RE.sub("-", _normalize_text(run_name or "").strip()).strip("._-")
+    return f"strix-report-{stem or 'report'}.pdf"
+
+
 def generate_password() -> str:
     """Return a >=20 character URL-safe password from a CSPRNG."""
     return secrets.token_urlsafe(16)
@@ -693,7 +697,7 @@ def build_encrypted_report(run_dir: Path) -> tuple[bytes, str, str]:
     pdf_bytes = generate_report_pdf(run_dir)
     password = generate_password()
     encrypted = encrypt_pdf(pdf_bytes, password)
-    filename = f"strix-report-{run_name}.pdf"
+    filename = report_filename(run_name)
     return encrypted, password, filename
 
 
@@ -702,4 +706,5 @@ __all__ = [
     "encrypt_pdf",
     "generate_password",
     "generate_report_pdf",
+    "report_filename",
 ]

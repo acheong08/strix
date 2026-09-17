@@ -138,11 +138,11 @@ export async function fetchAll(runName?: string | null): Promise<LoadedRun> {
 }
 
 // ---------------------------------------------------------------------------
-// Run history + email auth + report send
+// Run history + local report export + optional email auth
 //
-// These endpoints back the "Your runs" sidebar section. Auth and report-send
-// responses carry a meaningful JSON body on non-2xx statuses (an ``error``
-// code), so they read the body regardless of status rather than throwing.
+// These endpoints back the local viewer. Auth and report-send responses carry a
+// meaningful JSON body on non-2xx statuses (an ``error`` code), so they read
+// the body regardless of status rather than throwing.
 // ---------------------------------------------------------------------------
 
 export interface RunSeverityCounts {
@@ -180,6 +180,9 @@ export type OtpVerifyResult =
   | { verified: false; error: string };
 export type SendReportResult =
   | { ok: true; password: string; filename: string }
+  | { ok: false; error: string };
+export type DownloadReportResult =
+  | { ok: true; filename: string }
   | { ok: false; error: string };
 
 async function postJson(
@@ -281,4 +284,44 @@ export async function sendReport(runName?: string | null): Promise<SendReportRes
     };
   }
   return { ok: false, error: String(data.error ?? "unavailable") };
+}
+
+function filenameFromDisposition(value: string | null): string {
+  const match = value?.match(/filename="?([^"]+)"?/i);
+  return match?.[1] || "strix-report.pdf";
+}
+
+export async function downloadReport(runName?: string | null): Promise<DownloadReportResult> {
+  const res = await fetch("/api/report/download", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(runName ? { run: runName } : {}),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let data: Record<string, unknown> = {};
+    try {
+      const parsed = await res.json();
+      if (parsed && typeof parsed === "object") data = parsed as Record<string, unknown>;
+    } catch {
+      /* empty or non-JSON body */
+    }
+    return { ok: false, error: String(data.error ?? "unavailable") };
+  }
+
+  const blob = await res.blob();
+  const filename = filenameFromDisposition(res.headers.get("Content-Disposition"));
+  const url = URL.createObjectURL(blob);
+  try {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  return { ok: true, filename };
 }

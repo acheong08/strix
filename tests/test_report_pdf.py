@@ -21,6 +21,7 @@ from strix.interface.viewer.report_pdf import (
     encrypt_pdf,
     generate_password,
     generate_report_pdf,
+    report_filename,
 )
 
 
@@ -113,6 +114,11 @@ def test_build_encrypted_report(tmp_path: Path) -> None:
     reader = PdfReader(BytesIO(pdf_bytes))
     assert reader.is_encrypted
     assert reader.decrypt(password)
+
+
+def test_report_filename_sanitizes_hostile_run_names() -> None:
+    assert report_filename(' tricky /\n"name"\x00 ') == "strix-report-tricky-name.pdf"
+    assert report_filename("") == "strix-report-report.pdf"
 
 
 @pytest.mark.parametrize(

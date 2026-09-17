@@ -1,15 +1,10 @@
-import { useState } from "react";
 import { History, ChevronRight, Terminal } from "lucide-react";
 import type { RunListEntry, RunsPayload, RunSeverityCounts } from "@/data/serverSource";
 import { runTitle } from "@/lib/target-utils";
-import { trackCta } from "@/lib/cta";
-import EmailVerifyInline from "@/components/EmailVerifyInline";
 
 /**
- * "Past runs" panel. Unverified users see a tease with the run count and a
- * verify affordance (the launched run stays fully visible; the CLI
- * `strix view <name>` still works). Verified users get the full history and can
- * switch the active run, which threads ?run=<name> through the data fetches.
+ * "Past runs" panel. Session-authorized users get the full local history and
+ * can switch the active run, which threads ?run=<name> through the data fetches.
  */
 
 const SEV = [
@@ -73,20 +68,17 @@ interface PastRunsViewProps {
   runs: RunsPayload | null;
   activeRun: string | null;
   onSelectRun: (name: string) => void;
-  onVerified: () => void;
 }
 
 export default function PastRunsView({
   runs,
   activeRun,
   onSelectRun,
-  onVerified,
 }: PastRunsViewProps) {
   const count = runs?.count ?? 0;
-  const [showVerify, setShowVerify] = useState(false);
 
   if (!runs || runs.locked) {
-    return (
+   return (
       <div className="rounded-xl border border-[#222] bg-[rgba(255,255,255,0.02)] p-8 text-center">
         <div
           className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-xl"
@@ -98,24 +90,9 @@ export default function PastRunsView({
         <p className="mx-auto mt-1.5 max-w-md text-sm text-[#888]">
           You have {count} past {count === 1 ? "run" : "runs"} on this machine.
         </p>
-        {showVerify ? (
-          <>
-            <p className="mx-auto mt-3 max-w-sm text-xs text-[#666]">
-              Verify your email with a one-time code to unlock the full history.
-            </p>
-            <EmailVerifyInline onVerified={onVerified} />
-          </>
-        ) : (
-          <button
-            onClick={() => {
-              trackCta("history_unlock", "past_runs");
-              setShowVerify(true);
-            }}
-            className="mt-4 cursor-pointer rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90"
-          >
-            View runs
-          </button>
-        )}
+        <p className="mx-auto mt-3 max-w-sm text-xs text-[#666]">
+          Open this viewer from its authorized link to browse the full local history.
+        </p>
         <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-[#555]">
           <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
           Or open one from the CLI with{" "}

@@ -1,29 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  AlertTriangle,
-  Bot,
-  Users,
-  History,
-  Mail,
-  LogOut,
-  ChevronsUpDown,
-} from "lucide-react";
-import { LuGitPullRequestArrow } from "react-icons/lu";
-import { VscExtensions } from "react-icons/vsc";
+import React, { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, Bot, History, Mail } from "lucide-react";
 import { IoChatbubblesOutline } from "react-icons/io5";
 import { cn } from "@/lib/utils";
-import { ctaUrl, trackCta } from "@/lib/cta";
-import { UpgradeModal } from "@/components/UpgradeModal";
 import type { McpConnectionStatus } from "@/data/serverSource";
 import type { View } from "@/App";
-
-/**
- * Persistent left rail: a black rail with a right hairline border, an
- * account-switcher-style header, a single ungrouped list of h-9 nav rows (36px
- * icon slot, 14px label, rgba(255,255,255,0.12) active fill), a hairline
- * separator, and a user footer. Drag the right edge to resize; drag past the
- * collapse threshold to hide it, then click the left pull-zone to bring it back.
- */
 
 const MIN_WIDTH = 160;
 const DEFAULT_WIDTH = 260;
@@ -42,11 +22,8 @@ interface SidebarProps {
   mcpInUse: Set<string>;
   runCount: number;
   finished: boolean;
-  verified: boolean;
-  email: string | null;
   onOpenEmail: () => void;
   onOpenHistory: () => void;
-  onForget: () => void;
 }
 
 function readInt(key: string, fallback: number): number {
@@ -68,11 +45,8 @@ export default function Sidebar({
   mcpInUse,
   runCount,
   finished,
-  verified,
-  email,
   onOpenEmail,
   onOpenHistory,
-  onForget,
 }: SidebarProps) {
   const [width, setWidth] = useState(() => {
     const w = readInt(WIDTH_KEY, DEFAULT_WIDTH);
@@ -86,16 +60,6 @@ export default function Sidebar({
     }
   });
   const [isResizing, setIsResizing] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
-
-  // Open the upgrade dialog for a platform feature, recording which feature
-  // drove the open (the dialog's own CTAs track the deeper conversion).
-  const openUpgrade = (slug: string, description: string) => {
-    trackCta(slug, "sidebar");
-    setUpgradeFeature(description);
-  };
 
   const persistWidth = useCallback((w: number) => {
     setWidth(w);
@@ -125,8 +89,6 @@ export default function Sidebar({
     setIsResizing(true);
   }, []);
 
-  // Global drag handlers for the resize handle. Dragging below the collapse
-  // threshold hides the rail entirely.
   useEffect(() => {
     if (!isResizing || collapsed) return;
 
@@ -157,21 +119,8 @@ export default function Sidebar({
     };
   }, [isResizing, collapsed, persistCollapsed, persistWidth]);
 
-  // Close the user menu when clicking outside it.
-  useEffect(() => {
-    if (!showUserMenu) return;
-    const onDown = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [showUserMenu]);
-
   return (
     <>
-      {/* Left-edge pull zone: click to bring the rail back when collapsed. */}
       {collapsed && (
         <div
           className="fixed left-0 top-0 z-40 hidden h-full w-4 cursor-pointer transition-colors hover:bg-[rgba(255,255,255,0.08)] lg:block"
@@ -187,46 +136,25 @@ export default function Sidebar({
         )}
         style={{ width: collapsed ? 0 : width }}
       >
-        {/* Header — account-switcher stand-in (links out to Strix Cloud). */}
         <header className="relative flex flex-col gap-1 pt-1 min-w-[160px]">
           <div className="flex flex-row py-1 px-2">
-            <div className="flex h-10 w-full flex-row items-center">
-              <a
-                href={ctaUrl("https://app.strix.ai", "logo")}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackCta("logo", "sidebar")}
-                className="flex flex-1 flex-row items-center gap-2 rounded-md py-2 pl-2.5 pr-1 min-w-0 transition-colors hover:bg-[rgba(255,255,255,0.06)]"
-                title="Open Strix Cloud"
+            <div className="flex h-10 w-full flex-row items-center rounded-md py-2 pl-2.5 pr-1 min-w-0">
+              <span
+                className="mr-2 flex flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500"
+                style={{ width: 20, height: 20 }}
               >
-                <span
-                  className="flex flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500"
-                  style={{ width: 20, height: 20 }}
-                >
-                  <span className="text-[10px] font-semibold text-white">S</span>
+                <span className="text-[10px] font-semibold text-white">S</span>
+              </span>
+              <span className="flex flex-1 flex-row items-center gap-2 min-w-0">
+                <span className="truncate min-w-0 text-[14px] font-medium text-[#ededed]">Strix</span>
+                <span className="flex h-5 flex-shrink-0 items-center rounded px-2 text-[11px] font-medium text-[#888] bg-[rgba(255,255,255,0.08)]">
+                  Local
                 </span>
-                <span className="flex flex-1 flex-row items-center gap-2 min-w-0">
-                  <span className="truncate min-w-0 text-[14px] font-medium text-[#ededed]">Strix</span>
-                  <span className="flex h-5 flex-shrink-0 items-center rounded px-2 text-[11px] font-medium text-[#888] bg-[rgba(255,255,255,0.08)]">
-                    Local
-                  </span>
-                </span>
-              </a>
-              <a
-                href={ctaUrl("https://app.strix.ai", "logo")}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackCta("logo", "sidebar")}
-                className="flex flex-none items-center rounded-md px-1.5 py-2 transition-colors hover:bg-[rgba(255,255,255,0.06)]"
-                aria-label="Open Strix Cloud"
-              >
-                <ChevronsUpDown className="h-4 w-4 text-[#666]" />
-              </a>
+              </span>
             </div>
           </div>
         </header>
 
-        {/* Navigation */}
         <nav className="relative min-w-[160px] flex-1 overflow-y-auto overflow-x-clip scrollbar-thin pb-10 pt-2">
           <div className="relative flex flex-col gap-px px-2">
             <NavItem
@@ -275,102 +203,23 @@ export default function Sidebar({
               active={view === "feedback"}
               onClick={() => onSelectView("feedback")}
             />
-
-            <hr className="mx-0 my-1 h-px w-full border-0 bg-[rgba(255,255,255,0.08)]" />
-
-            <NavItem
-              icon={<LuGitPullRequestArrow className="h-4 w-4" />}
-              label="PR Security Reviews"
-              active={false}
-              onClick={() =>
-                openUpgrade(
-                  "pr_reviews",
-                  "Strix reviews every pull request and flags exploitable changes before they merge."
-                )
-              }
-            />
-            <NavItem
-              icon={<VscExtensions className="h-4 w-4" />}
-              label="Integrations"
-              active={false}
-              onClick={() =>
-                openUpgrade(
-                  "integrations",
-                  "Sync findings to Jira, Linear, and Slack so fixes happen where your team already works."
-                )
-              }
-            />
-            <NavItem
-              icon={<Users className="h-4 w-4" />}
-              label="Members"
-              active={false}
-              onClick={() =>
-                openUpgrade(
-                  "members",
-                  "Invite your team, set roles, and share findings and run history across your org."
-                )
-              }
-            />
           </div>
         </nav>
 
-        {/* User footer — verified-email footer. */}
-        <section className="flex min-w-[160px] flex-col gap-0.5" ref={userMenuRef}>
-          <div className="relative p-2">
-            {verified && email ? (
-              <button
-                onClick={() => setShowUserMenu((v) => !v)}
-                className="relative flex w-full cursor-pointer items-center gap-2 rounded-md bg-transparent px-2.5 py-2 transition-colors hover:bg-[rgba(255,255,255,0.06)]"
-              >
-                <span
-                  className="flex flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500"
-                  style={{ width: 20, height: 20 }}
-                >
-                  <span className="text-[9px] font-semibold text-white">
-                    {email[0]?.toUpperCase() || "U"}
-                  </span>
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col text-left">
-                  <span className="truncate text-[13px] font-medium text-[#ededed]">{email}</span>
-                  <span className="truncate text-[11px] text-[#555]">Linked to this machine</span>
-                </span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-2 rounded-md px-2.5 py-2">
-                <span
-                  className="flex flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500"
-                  style={{ width: 20, height: 20 }}
-                >
-                  <span className="text-[9px] font-semibold text-white">S</span>
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col text-left">
-                  <span className="truncate text-[13px] font-medium text-[#ededed]">Local viewer</span>
-                </span>
-              </div>
-            )}
-
-            {showUserMenu && verified && email && (
-              <div className="absolute bottom-full left-2 right-2 z-50 mb-1 overflow-hidden rounded-lg border border-[#333] bg-black shadow-xl">
-                <div className="border-b border-[#333] px-3 py-2">
-                  <p className="truncate text-[13px] font-medium text-white">Linked email</p>
-                  <p className="truncate text-[11px] text-[#666]">{email}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    onForget();
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-[#888] transition-colors hover:bg-[rgba(255,255,255,0.06)] hover:text-red-400"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Forget this email
-                </button>
-              </div>
-            )}
+        <section className="flex min-w-[160px] flex-col gap-0.5 p-2">
+          <div className="flex items-center gap-2 rounded-md px-2.5 py-2">
+            <span
+              className="flex flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500"
+              style={{ width: 20, height: 20 }}
+            >
+              <span className="text-[9px] font-semibold text-white">S</span>
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col text-left">
+              <span className="truncate text-[13px] font-medium text-[#ededed]">Local viewer</span>
+            </span>
           </div>
         </section>
 
-        {/* Resize handle */}
         <div
           className="group absolute right-0 top-0 z-30 h-full w-1 cursor-col-resize"
           onMouseDown={handleResizeStart}
@@ -384,15 +233,7 @@ export default function Sidebar({
         </div>
       </aside>
 
-      {/* Overlay during resize to prevent text selection. */}
       {isResizing && <div className="fixed inset-0 z-10 cursor-col-resize" />}
-
-      <UpgradeModal
-        open={upgradeFeature !== null}
-        description={upgradeFeature ?? ""}
-        source="sidebar"
-        onClose={() => setUpgradeFeature(null)}
-      />
     </>
   );
 }
@@ -429,25 +270,9 @@ function NavItem({ icon, label, active, onClick, count }: NavItemProps) {
   );
 }
 
-// The quarter-circle sweep frames the terminal UI cycles for an in-use
-// connection, and the sub-second tick that advances them.
 const SWEEP_FRAMES = ["◐", "◓", "◑", "◒"] as const;
 const SWEEP_MS = 220;
 
-/**
- * The MCP connections panel: a compact roster of the run's connected MCP
- * servers, matching the terminal UI's sidebar panel. A header carries the
- * total count; each row shows a status glyph, the connection name, and its
- * tool count (or "offline"):
- *   - solid green dot: attached and idle;
- *   - green cycling quarter-circle (◐◓◑◒): a tool call is running against it;
- *   - red dot + "offline": the connection's live session has died.
- *
- * "In use" is derived by the caller from the connection-tagged tool events, not
- * carried on the roster, so a call in flight shows motion with no extra signal.
- * The roster scrolls within a bounded height so a long list never blows out the
- * rail, mirroring how the nav above it scrolls.
- */
 function McpConnectionsPanel({
   connections,
   inUse,
@@ -458,8 +283,6 @@ function McpConnectionsPanel({
   const anyInUse = connections.some((c) => !c.dead && inUse.has(c.name));
   const [frame, setFrame] = useState(0);
 
-  // Advance the sweep only while at least one connection is in use, so an idle
-  // panel does no work.
   useEffect(() => {
     if (!anyInUse) return;
     const id = setInterval(() => setFrame((f) => (f + 1) % SWEEP_FRAMES.length), SWEEP_MS);
@@ -507,7 +330,6 @@ function McpConnectionsPanel({
   );
 }
 
-// Overview icon: a dashboard grid glyph (16x16 viewBox).
 function ProjectsIcon() {
   return (
     <svg style={{ width: 16, height: 16, color: "currentcolor" }} viewBox="0 0 16 16" fill="currentColor">
